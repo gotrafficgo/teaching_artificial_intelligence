@@ -1,0 +1,16 @@
+Default corpus
+==============
+
+Title: Alice's Adventures in Wonderland
+Author: Lewis Carroll
+Source: Project Gutenberg, eBook #11
+URL: https://www.gutenberg.org/ebooks/11
+Downloaded: 2026-08-24
+
+Project Gutenberg identifies this work as public domain in the United States.
+The local training file contains the book text between the Gutenberg START and
+END markers, with wrapped lines joined into paragraphs. The Gutenberg license
+header and footer are not included in the training file.
+
+mini_english_corpus.txt is the earlier small, original corpus and remains
+available for quick experiments.

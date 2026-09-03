@@ -1,0 +1,23 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+/archives/
+
+# Downloaded automatically by the CNN training script.
+convolutional-neural-network/data/
+
+# Generated figures and sample images.
+convolutional-neural-network/examples/*.png
+!convolutional-neural-network/examples/test_digit_7.png
+recurrent-neural-network/examples/*.png
+car-following-simulation/results/
+
+# Local plotting cache.
+car-following-simulation/.mplconfig/
