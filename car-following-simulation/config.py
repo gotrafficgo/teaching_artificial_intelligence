@@ -1,67 +1,65 @@
+"""All parameters for the car-following simulation."""
+
 import random
 
+
 class Config:
-    def __init__(self, seed=1, experiment=1):
+    """Keep the experiment settings in one easy-to-edit class."""
 
-        # === Initialize Random Seeds ===
+    DEFAULT_TIME_MAX = 1000.0
+
+    def __init__(self, seed=1, experiment=1, time_max=DEFAULT_TIME_MAX):
+        if experiment not in [1, 2, 3, 4]:
+            raise ValueError("experiment must be 1, 2, 3, or 4")
+        if time_max <= 0:
+            raise ValueError("time_max must be positive")
+
         self.seed = seed
-        random.seed(self.seed)
+        random.seed(seed)
 
-        # === Road Configuration ===
-        self.speed_limit = 30                # Speed limit (m/s)
-        self.road_length = 2000              # Total road length (m)
+        # Road
+        self.road_length = 5000.0             # m
+        self.speed_limit = 30.0               # m/s
 
-        # === Simulation Settings ===
-        self.simulation_time_step = 0.1      # Simulation time step Δt (s)
-        self.time_max             = 1000     # Total simulation time (s)
+        # Simulation
+        self.time_step = 0.1                  # s
+        self.time_max = time_max              # s
 
-        # === IDM Parameters ===
-        self.idm_minimum_spacing      = 2    # Minimum spacing s0 (m)
-        self.idm_safety_time_headway  = 1    # Safety time headway T (s)
-        self.idm_acceleration         = 1.5  # Maximum acceleration a (m/s²)
-        self.idm_desired_deceleration = 2    # Comfortable deceleration b (m/s²)
-        self.idm_delay                = 0.4  # Reaction delay τ (s)
+        # IDM
+        self.idm_minimum_spacing = 2.0        # s0, m
+        self.idm_time_headway = 1.0           # T, s
+        self.idm_maximum_acceleration = 1.5   # a, m/s^2
+        self.idm_comfortable_deceleration = 2.0  # b, m/s^2
+        self.idm_maximum_deceleration = 8.0   # numerical safety bound, m/s^2
+        self.idm_acceleration_exponent = 4.0
 
-        self.vehicle_length       = 5                 # Vehicle length L (m)
-        self.initial_speed        = self.speed_limit  # Initial speed (m/s)
-        self.initial_acceleration = 0                 # Initial acceleration (m/s²)
-        self.relative_speed_noise = 0.5               # Noise σ for perceived speed (m/s)
+        # Vehicle
+        self.vehicle_length = 5.0             # m
+        self.initial_speed = self.speed_limit
+        self.relative_speed_noise = 0.5       # m/s
 
-        # === Bottleneck Settings ===
-        self.bottleneck_length = 200                         # Bottleneck length (m)
-        self.bottleneck_x_start = self.road_length - 500     # Bottleneck start position (m)
-        self.bottleneck_x_end = self.bottleneck_x_start + self.bottleneck_length  # End position (m)
-        self.bottleneck_t_start = 100                        # Activation time (s)
-        self.bottleneck_speed_limit = self.speed_limit * 0.2 # Reduced speed limit (m/s)
-        self.percentage_influenced_by_bottleneck = 0.7       # Fraction of vehicles affected
+        # Temporary highway bottleneck
+        self.bottleneck_x_start = self.road_length - 500.0      # m
+        self.bottleneck_x_end   = self.road_length - 300.0        # m
+        self.bottleneck_t_start = 100.0       # s
+        self.bottleneck_speed_limit = 2.0     # m/s
+        self.bottleneck_influence_rate = 0.7
 
+        # Experiments 1 and 2 use a short bottleneck. Experiments 3 and 4
+        # keep the bottleneck active until the simulation ends.
+        if experiment in [1, 2]:
+            self.bottleneck_t_end = 300.0
+        else:
+            self.bottleneck_t_end = self.time_max
 
+        # Experiments 1 and 3 use fixed arrivals. Experiments 2 and 4 use
+        # random arrivals with the same expected interval of 1.5 seconds.
+        if experiment in [1, 3]:
+            self.vehicle_min_interval = 1.7
+            self.vehicle_extra_interval = 0.0
+        else:
+            self.vehicle_min_interval = 1.0
+            self.vehicle_extra_interval = 0.5
 
-        # === Experiment Selection ===
-        # 1: Deterministic inflow + short bottleneck
-        # 2: Stochastic inflow + short bottleneck
-        # 3: Deterministic inflow + long bottleneck
-        # 4: Stochastic inflow + long bottleneck
         self.experiment = experiment
-
-        # === Vehicle Generation Settings ===
-        # Vehicle inter-arrival time = min_interval + exponential(extra_interval)
-        if self.experiment == 1:
-            self.vehicle_min_interval = 2.5
-            self.vehicle_extra_interval = 0
-            self.bottleneck_t_end = 200
-
-        elif self.experiment == 2:
-            self.vehicle_min_interval = 1.5
-            self.vehicle_extra_interval = 1
-            self.bottleneck_t_end = 200
-
-        elif self.experiment == 3:
-            self.vehicle_min_interval = 2.5
-            self.vehicle_extra_interval = 0
-            self.bottleneck_t_end = self.time_max
-
-        elif self.experiment == 4:
-            self.vehicle_min_interval = 1.5
-            self.vehicle_extra_interval = 1
-            self.bottleneck_t_end = self.time_max
+        self.reference_wave_speed_kmh = -16.0

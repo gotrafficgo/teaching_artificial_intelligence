@@ -1,98 +1,106 @@
+"""State and motion shared by every vehicle model."""
+
 import random
 
 
 class Vehicle:
-
-    def __init__(self, config, id, vehicle_front=None):
-        self.id = id
-        self.position = 0
+    def __init__(self, config, vehicle_id, vehicle_front=None):
+        self.id = vehicle_id
+        self.position = 0.0
+        self.speed = config.initial_speed
+        self.acceleration = 0.0
         self.vehicle_front = vehicle_front
+        self.active = True
+        self.history = []
 
-        # Road and vehicle initialization
         self.road_length = config.road_length
         self.speed_limit = config.speed_limit
         self.current_speed_limit = self.speed_limit
-        self.speed = config.initial_speed
-        self.a = config.initial_acceleration
         self.vehicle_length = config.vehicle_length
-        self.delta_t = config.simulation_time_step
-        self.history = []
+        self.time_step = config.time_step
+        self.maximum_acceleration = config.idm_maximum_acceleration
+        self.maximum_deceleration = config.idm_maximum_deceleration
 
-        # Bottleneck parameters
         self.bottleneck_x_start = config.bottleneck_x_start
         self.bottleneck_x_end = config.bottleneck_x_end
         self.bottleneck_t_start = config.bottleneck_t_start
         self.bottleneck_t_end = config.bottleneck_t_end
         self.bottleneck_speed_limit = config.bottleneck_speed_limit
-
-        # Whether this vehicle reacts to bottleneck limits
+        self.bottleneck_entry_time = None
+        self.was_inside_bottleneck = False
         self.influenced_by_bottleneck = (
-            random.random() < config.percentage_influenced_by_bottleneck
+            random.random() < config.bottleneck_influence_rate
         )
 
     def check_road(self, current_time):
-        """Apply bottleneck speed limit if vehicle is inside spatial and temporal bottleneck."""
-        if not self.influenced_by_bottleneck:
-            self.current_speed_limit = self.speed_limit
-            return
+        """Choose the desired speed for the current road and time."""
+        inside_bottleneck = (
+            self.bottleneck_x_start
+            <= self.position
+            <= self.bottleneck_x_end
+        )
+        bottleneck_is_active = (
+            self.bottleneck_t_start
+            <= current_time
+            < self.bottleneck_t_end
+        )
 
-        in_x_range = (self.position >= self.bottleneck_x_start and
-                      self.position <= self.bottleneck_x_end)
-        in_t_range = (current_time >= self.bottleneck_t_start and
-                      current_time <= self.bottleneck_t_end)
+        # Record the first time this vehicle enters the bottleneck area.
+        if inside_bottleneck and not self.was_inside_bottleneck:
+            self.bottleneck_entry_time = current_time
+        self.was_inside_bottleneck = inside_bottleneck
 
-        if in_x_range and in_t_range:
+        entered_after_bottleneck_started = (
+            self.bottleneck_entry_time is not None
+            and self.bottleneck_t_start
+            <= self.bottleneck_entry_time
+            < self.bottleneck_t_end
+        )
+
+        if (
+            self.influenced_by_bottleneck
+            and inside_bottleneck
+            and bottleneck_is_active
+            and entered_after_bottleneck_started
+        ):
             self.current_speed_limit = self.bottleneck_speed_limit
         else:
             self.current_speed_limit = self.speed_limit
 
     def update_acceleration(self):
-        """Compute vehicle acceleration in a concrete car-following model."""
-        raise NotImplementedError("Subclasses must implement update_acceleration().")
+        """Calculate acceleration in a subclass such as IDMVehicle."""
+        raise NotImplementedError
 
-    def update_speed(self):
-        """Update vehicle speed using acceleration and safety constraints."""
+    def update_motion(self):
+        """Update speed and position together using average speed."""
+        old_speed = self.speed
 
-        # Vehicle has left the road
+        # Keep acceleration inside the allowed physical range.
+        acceleration = max(
+            -self.maximum_deceleration,
+            min(self.acceleration, self.maximum_acceleration),
+        )
+
+        # The vehicle cannot move backwards.
+        new_speed = max(0.0, old_speed + acceleration * self.time_step)
+
+        # Average-speed integration keeps speed and position consistent.
+        distance = 0.5 * (old_speed + new_speed) * self.time_step
+        self.position = min(self.road_length, self.position + distance)
+        self.speed = new_speed
+
+        # If speed was clipped at zero, store the acceleration actually applied.
+        self.acceleration = (new_speed - old_speed) / self.time_step
+
         if self.position >= self.road_length:
-            v_new = self.speed_limit
-        else:
-            a = self.a
-            v = self.speed
-            delta_t = self.delta_t
+            self.active = False
 
-            # Standard Euler update
-            v_new = v + a * delta_t
-
-            # Additional constraint: do not exceed max speed allowed by gap
-            if self.vehicle_front is not None:
-                s = self.vehicle_front.position - self.position - self.vehicle_length
-                s = max(s, 0.01)  # [additional constraint]
-                v_max_allowed = s / delta_t
-                v_new = min(v_new, v_max_allowed)
-
-            # Prevent negative speeds
-            v_new = max(v_new, 0)  # [additional constraint]
-
-        self.speed = v_new
-
-    def update_position(self):
-        """Update vehicle position with kinematic equation and constraints."""
-        v = self.speed
-        a = self.a
-        delta_t = self.delta_t
-
-        # d = v*dt + 0.5*a*dt^2
-        d = v * delta_t + 0.5 * a * delta_t ** 2
-        d = max(d, 0)  # [additional constraint]
-
-        self.position = self.position + d
-
-    def record_state(self, t):
-        """Store vehicle state for later analysis."""
-        self.history.append({
-            "t": t,
-            "position": self.position,
-            "speed": self.speed,
-            "acceleration": self.a
-        })
+    def record_state(self, current_time):
+        self.history.append(
+            {
+                "t": current_time,
+                "position": self.position,
+                "speed": self.speed,
+                "acceleration": self.acceleration,
+            }
+        )

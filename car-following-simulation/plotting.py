@@ -1,7 +1,10 @@
+"""Plot speed-colored trajectories from a completed simulation."""
+
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.collections import LineCollection
-from pathlib import Path
 
 
 def plot_time_space_diagram(
@@ -10,105 +13,60 @@ def plot_time_space_diagram(
     output: Path | None = None,
     show: bool = True,
 ):
-
+    """Create, optionally save, and return a time-space diagram."""
     fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Colormap and normalization for speed values
-    cmap = plt.get_cmap('jet_r')
-    norm = plt.Normalize(
-        vmin=0,
-        vmax=getattr(config, 'speed_limit', None) or 1  # fallback if speed_limit missing
-    )
-
+    cmap = plt.get_cmap("jet_r")
+    norm = plt.Normalize(vmin=0.0, vmax=config.speed_limit)
     any_segments = False
 
-    # ----------------------------------------------------------------------
-    # Loop through every vehicle and draw its trajectory
-    # ----------------------------------------------------------------------
     for vehicle in sim.vehicles:
-        history = getattr(vehicle, 'history', None)
-
-        # Need at least two records to draw a line segment
-        if not history or len(history) < 2:
+        if len(vehicle.history) < 2:
             continue
-
-        # Extract time, position, speed histories as arrays
-        times = np.array([record['t'] for record in history], dtype=float)
-        positions = np.array([record['position'] for record in history], dtype=float)
-        speeds = np.array([record['speed'] for record in history], dtype=float)
-
-        # Build piecewise line segments between consecutive points
-        points = np.vstack([times, positions]).T.reshape(-1, 1, 2)
-        segments = np.concatenate([points[:-1], points[1:]], axis=1)
-
-        # Speed for each segment (average of endpoints)
-        seg_speeds = 0.5 * (speeds[:-1] + speeds[1:])
-
-        # Create line collection colored by speed
-        lc = LineCollection(
-            segments,
-            cmap=cmap,
-            norm=norm,
-            linewidths=1.5
-        )
-        lc.set_array(seg_speeds)
-        ax.add_collection(lc)
-
+        times = np.array([record["t"] for record in vehicle.history])
+        positions = np.array([record["position"] for record in vehicle.history])
+        speeds = np.array([record["speed"] for record in vehicle.history])
+        points = np.column_stack((times, positions)).reshape(-1, 1, 2)
+        segments = np.concatenate((points[:-1], points[1:]), axis=1)
+        collection = LineCollection(segments, cmap=cmap, norm=norm, linewidths=1.2)
+        collection.set_array(0.5 * (speeds[:-1] + speeds[1:]))
+        ax.add_collection(collection)
         any_segments = True
 
-    # ----------------------------------------------------------------------
-    # Add a colorbar only if any vehicle produced drawable segments
-    # ----------------------------------------------------------------------
     if any_segments:
-        mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        mappable.set_array([])
-        fig.colorbar(mappable, ax=ax, label='Speed (m/s)')
-
-    # ----------------------------------------------------------------------
-    # Set axis limits
-    # ----------------------------------------------------------------------
-    # Time axis: use config.time_max if available, otherwise max recorded time
-    ax.set_xlim(
-        0,
-        getattr(
-            config,
-            'time_max',
-            max((rec['t'] for v in sim.vehicles for rec in getattr(v, 'history', [{'t': 0}])) )
+        colorbar = fig.colorbar(
+            plt.cm.ScalarMappable(cmap=cmap, norm=norm),
+            ax=ax,
         )
-    )
+        colorbar.set_label("Speed (m/s)")
 
-    # Position axis: use config.road_length if available, otherwise max recorded position
-    ax.set_ylim(
-        0,
-        getattr(
-            config,
-            'road_length',
-            max((rec['position'] for v in sim.vehicles for rec in getattr(v, 'history', [{'position': 0}])) )
+    wave_speed = config.reference_wave_speed_kmh / 3.6
+    start_time = config.bottleneck_t_start
+    start_position = config.bottleneck_x_start
+    if wave_speed < 0.0:
+        end_time = min(
+            config.time_max,
+            start_time + start_position / abs(wave_speed),
         )
-    )
+        wave_times = np.array([start_time, end_time])
+        wave_positions = start_position + wave_speed * (wave_times - start_time)
+        ax.plot(
+            wave_times,
+            wave_positions,
+            color="darkred",
+            linestyle="--",
+            linewidth=1.8,
+            label=f"Reference wave ({config.reference_wave_speed_kmh:g} km/h)",
+        )
+        ax.legend(frameon=False)
 
-    # ----------------------------------------------------------------------
-    # Plot reference line of wave speed
-    # ----------------------------------------------------------------------
-    slope = -16 * 1000 / 3600  # m/s
-    x0, y0 = 0, 1000
-    x_vals = np.array([0, getattr(config, 'time_max', 100)])
-    y_vals = y0 + slope * (x_vals - x0)
-    ax.plot(x_vals, y_vals, color='white', linestyle='--', linewidth=2, label='Reference line')
+    ax.set_xlim(0.0, config.time_max)
+    ax.set_ylim(0.0, config.road_length)
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Position (m)")
+    ax.set_title(f"Time-Space Diagram — Experiment {config.experiment}")
+    ax.grid(linestyle="--", alpha=0.3)
+    fig.tight_layout()
 
-    x_text = 100
-    y_text = y0 + slope * (x_text - x0)
-    ax.text(x_text, y_text, '-16 km/h', color='white', fontsize=10, va='bottom', ha='left')
-
-    # ----------------------------------------------------------------------
-    # Plot formatting
-    # ----------------------------------------------------------------------
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Position (m)')
-    ax.set_title('Time-Space Diagram')
-    ax.grid(True, linestyle='--', alpha=0.4)
-
-    plt.tight_layout()
     if output is not None:
         output.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output, dpi=160, bbox_inches="tight")
@@ -117,3 +75,4 @@ def plot_time_space_diagram(
         plt.show()
     else:
         plt.close(fig)
+    return fig, ax
