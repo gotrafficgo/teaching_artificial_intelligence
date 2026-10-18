@@ -1,7 +1,7 @@
 # AI Learning Projects
 
-Three independent, runnable projects introduce model-based simulation, image
-classification, and sequence modeling. Each project includes a focused entry
+Four independent, runnable projects introduce model-based simulation, image
+classification, sequence modeling, and reinforcement learning. Each project includes a focused entry
 point and a guide that explains the main concepts and experiments.
 
 | Project | Learning focus | Entry point |
@@ -9,6 +9,7 @@ point and a guide that explains the main concepts and experiments.
 | [Car-following simulation](car-following-simulation/README.md) | IDM, traffic flow, bottlenecks, and space-time diagrams | `car-following-simulation/main.py` |
 | [Convolutional neural network](convolutional-neural-network/README.md) | MNIST, convolution, pooling, training, and prediction | `convolutional-neural-network/train.py` |
 | [Recurrent neural network](recurrent-neural-network/README.md) | Character prediction, hidden states, BPTT, and text generation | `recurrent-neural-network/rnn_text_generation.py` |
+| [Reinforcement learning](reinforcement-learning/README.md) | Maze navigation, rewards, exploration, and tabular Q-learning | `reinforcement-learning/q_learning.py` |
 
 ## Recommended learning path
 
@@ -16,6 +17,7 @@ point and a guide that explains the main concepts and experiments.
    behavioral model from its simulation environment.
 2. Use the CNN to see how model parameters are learned from labeled images.
 3. Use the RNN to extend the same training ideas to ordered sequences.
+4. Use the maze example to learn Q-learning through interaction and rewards.
 
 The projects are independent. The CNN and RNN share PyTorch, but they do not
 exchange data or model outputs.

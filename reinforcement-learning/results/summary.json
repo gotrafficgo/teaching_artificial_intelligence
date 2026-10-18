@@ -1,0 +1,54 @@
+{
+  "seed": 7,
+  "episodes": 1500,
+  "before": {
+    "steps": 50,
+    "return": -39,
+    "success": true
+  },
+  "after": {
+    "steps": 8,
+    "return": 3,
+    "success": true,
+    "path_row_col": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        4,
+        4
+      ]
+    ]
+  },
+  "shortest_path_steps": 8,
+  "learned_shortest_path": true
+}
